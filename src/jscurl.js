@@ -27,79 +27,82 @@
  * Place this file in your jsextensions directory. Call from your own
  * javascript using the jscurl_get or jscurl_xml_get functions.
 
- * The callback for jscurl_get takes one argument, which is the path
- * to the downloaded file. You can do with this path whatever you
- * wish, but you probably want to read the file using Max' File
- * object.
+ * The callback for jscurl_get takes one argument, which is a String
+ * containing the body of the HTTP GET.
 
  * The callback for jscurl_xml_get takes one argument, which is a
- * javascript XML object.
+ * javascript XML object. It is provided because some extra
+ * boilerplate is required before translation to an E4X object; see
+ * https://developer.mozilla.org/en/E4X#Known_bugs_and_limitations for
+ * details.
 
  */
 
 jscurl_get.local = 1;
-function jscurl_get(url, callback) {
-    var p = new Patcher();
-    var myuldl = p.newdefault(122, 90, "jit.uldl");
-    var mycallback = p.newdefault(122, 90, "js", "jscurl");
-    mycallback.message("set_callback", callback);
-    p.hiddenconnect(myuldl, 1, mycallback, 0);
-    myuldl.message("download", url, getRandomString(8));
+function jscurl_get(context, url, callback) {
+  var p = new Patcher();
+  var myuldl = p.newdefault(122, 90, "jit.uldl", "@convert", 0);
+  var mymat = p.newdefault(122, 90, "jit.matrix");
+
+  var callback_funcname = "G__callback";
+  var callback_route = p.newdefault(122, 90, "route", "download");
+  var callback_select = p.newdefault(122, 90, "select", 1);
+  var callback_call = p.newdefault(122, 90, "t", callback_funcname);
+
+  p.connect(myuldl, 0, mymat, 0);
+  p.connect(myuldl, 1, callback_route, 0);
+  p.connect(callback_route, 0, callback_select, 0);
+  p.connect(callback_select, 0, callback_call, 0);
+  p.connect(callback_call, 0, context.box, 0);
+
+  context[callback_funcname] =
+    function() {
+      var dimx = 0;
+      var dimy = 0;
+      var dim_route = p.newdefault(122, 90, "route", "dim");
+      var dim_funcname = "G__dim";
+      var dim_prepend = p.newdefault(122, 90, "prepend", dim_funcname);
+
+      context[dim_funcname] = function() {
+        dimx = arguments[0];
+        dimy = arguments[1];
+        var output = p.newdefault(122, 90, "pattr");
+        p.connect(mymat, 1, output, 0);
+
+        var result = "";
+        for(var i = 0; i != dimy; i++) {
+          for(var j = 0; j != dimx; j++) {
+            mymat.getcell(j, i);
+            var charcode = output.getvalueof()[4];
+            // jit.uldl pads lines w/ zeros so the matrix is
+            // rectangular. Skip the zeros.
+            if(charcode !== 0) {
+              result += String.fromCharCode(charcode);
+            }
+          }
+        }
+        delete context[dim_funcname];
+        callback(result);
+      }
+
+      p.connect(mymat, 1, dim_route, 0);
+      p.connect(dim_route, 0, dim_prepend, 0);
+      p.connect(dim_prepend, 0, context.box, 0);
+
+      mymat.getdim();
+
+      delete context[callback_funcname];
+    };
+
+  myuldl.download(url, "matrix");
 }
 
 jscurl_xml_get.local = 1;
-function jscurl_xml_get(url, callback) {
-    jscurl_get(url,
-	       function(filename) {
-		   var f = new File(filename);
-		   var r = readWholeFile(f);
-		   r = r.replace(/^<\?xml\s+version\s*=\s*(["'])[^\1]+\1[^?]*\?>/, "");
-		   callback(new XML(r));
-		   f.close();
-	       });
-}
-
-readWholeFile.local = 1;
-function readWholeFile(f) {
-    var BLOCK_SIZE = 1024;
-    if(f.isopen) {
-	var s = "";
-	var l;
-	while(l = f.readstring(1024)) {
-	    s += l;
-	}
-	return s;
-    }
-}
-
-var callback_fn = post;
-
-function set_callback(fn) {
-    callback_fn = fn;
-}
-
-function download(success, path) {
-    if(success) {
-	callback_fn(path);
-    } else {
-	post("Failed to download.");
-    }
-}
-
-getRandomInt.local = 1;
-function getRandomInt(min, max)
-{
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-getRandomString.local = 1;
-function getRandomString(length) {
-    var a = [];
-    for(var i = 0; i != length; i++) {
-	var j = getRandomInt(65, 116);
-	// eliminate punctation characters between upper and lower case
-	j = j > 90 ? j + 6 : j;
-	a.push(j);
-    }
-    return String.fromCharCode.apply(this, a);
+function jscurl_xml_get(context, url, callback) {
+  jscurl_get(context,
+             url,
+             function(r) {
+               r = r.replace(/^<\?xml\s+version\s*=\s*(["'])[^\1]+\1[^?]*\?>/, "");
+               callback(new XML(r));
+             });
 }

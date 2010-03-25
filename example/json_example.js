@@ -10,10 +10,10 @@
 evalfile("json2.js");
 
 function bang() {
-    jscurl_get("http://feeds.delicious.com/v2/json",
-	       function(path) {
-		   var f = new File(path);
-		   var j = JSON.parse(readWholeFile(f));
+    jscurl_get(this,
+               "http://feeds.delicious.com/v2/json",
+               function(result) {
+		   var j = JSON.parse(result);
 
 		   // for each item in the resulting list...
 		   for(var i = 0; i != j.length; i++) {
@@ -42,4 +42,5 @@ function readWholeFile(f) {
 	}
 	return s;
     }
+  }
 }

@@ -8,7 +8,8 @@
  */
 
 function bang() {
-    jscurl_xml_get("http://www.dhs.gov/dhspublic/getAdvisoryCondition",
+    jscurl_xml_get(this,
+		   "http://www.dhs.gov/dhspublic/getAdvisoryCondition",
 		   function(x) {
 		       switch(x.@CONDITION.toXMLString()) {
 		       case "LOW":
