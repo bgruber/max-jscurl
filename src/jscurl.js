@@ -40,69 +40,69 @@
 
 jscurl_get.local = 1;
 function jscurl_get(context, url, callback) {
-  var p = new Patcher();
-  var myuldl = p.newdefault(122, 90, "jit.uldl", "@convert", 0);
-  var mymat = p.newdefault(122, 90, "jit.matrix");
+    var p = new Patcher();
+    var myuldl = p.newdefault(122, 90, "jit.uldl", "@convert", 0);
+    var mymat = p.newdefault(122, 90, "jit.matrix");
 
-  var callback_funcname = "G__callback";
-  var callback_route = p.newdefault(122, 90, "route", "download");
-  var callback_select = p.newdefault(122, 90, "select", 1);
-  var callback_call = p.newdefault(122, 90, "t", callback_funcname);
+    var callback_funcname = "G__callback";
+    var callback_route = p.newdefault(122, 90, "route", "download");
+    var callback_select = p.newdefault(122, 90, "select", 1);
+    var callback_call = p.newdefault(122, 90, "t", callback_funcname);
 
-  p.connect(myuldl, 0, mymat, 0);
-  p.connect(myuldl, 1, callback_route, 0);
-  p.connect(callback_route, 0, callback_select, 0);
-  p.connect(callback_select, 0, callback_call, 0);
-  p.connect(callback_call, 0, context.box, 0);
+    p.connect(myuldl, 0, mymat, 0);
+    p.connect(myuldl, 1, callback_route, 0);
+    p.connect(callback_route, 0, callback_select, 0);
+    p.connect(callback_select, 0, callback_call, 0);
+    p.connect(callback_call, 0, context.box, 0);
 
-  context[callback_funcname] =
-    function() {
-      var dimx = 0;
-      var dimy = 0;
-      var dim_route = p.newdefault(122, 90, "route", "dim");
-      var dim_funcname = "G__dim";
-      var dim_prepend = p.newdefault(122, 90, "prepend", dim_funcname);
+    context[callback_funcname] =
+        function() {
+            var dimx = 0;
+            var dimy = 0;
+            var dim_route = p.newdefault(122, 90, "route", "dim");
+            var dim_funcname = "G__dim";
+            var dim_prepend = p.newdefault(122, 90, "prepend", dim_funcname);
 
-      context[dim_funcname] = function() {
-        dimx = arguments[0];
-        dimy = arguments[1];
-        var output = p.newdefault(122, 90, "pattr");
-        p.connect(mymat, 1, output, 0);
+            context[dim_funcname] = function() {
+                dimx = arguments[0];
+                dimy = arguments[1];
+                var output = p.newdefault(122, 90, "pattr");
+                p.connect(mymat, 1, output, 0);
 
-        var result = "";
-        for(var i = 0; i != dimy; i++) {
-          for(var j = 0; j != dimx; j++) {
-            mymat.getcell(j, i);
-            var charcode = output.getvalueof()[4];
-            // jit.uldl pads lines w/ zeros so the matrix is
-            // rectangular. Skip the zeros.
-            if(charcode !== 0) {
-              result += String.fromCharCode(charcode);
+                var result = "";
+                for(var i = 0; i != dimy; i++) {
+                    for(var j = 0; j != dimx; j++) {
+                        mymat.getcell(j, i);
+                        var charcode = output.getvalueof()[4];
+                        // jit.uldl pads lines w/ zeros so the matrix is
+                        // rectangular. Skip the zeros.
+                        if(charcode !== 0) {
+                            result += String.fromCharCode(charcode);
+                        }
+                    }
+                }
+                delete context[dim_funcname];
+                callback(result);
             }
-          }
-        }
-        delete context[dim_funcname];
-        callback(result);
-      }
 
-      p.connect(mymat, 1, dim_route, 0);
-      p.connect(dim_route, 0, dim_prepend, 0);
-      p.connect(dim_prepend, 0, context.box, 0);
+            p.connect(mymat, 1, dim_route, 0);
+            p.connect(dim_route, 0, dim_prepend, 0);
+            p.connect(dim_prepend, 0, context.box, 0);
 
-      mymat.getdim();
+            mymat.getdim();
 
-      delete context[callback_funcname];
-    };
+            delete context[callback_funcname];
+        };
 
-  myuldl.download(url, "matrix");
+    myuldl.download(url, "matrix");
 }
 
 jscurl_xml_get.local = 1;
 function jscurl_xml_get(context, url, callback) {
-  jscurl_get(context,
-             url,
-             function(r) {
-               r = r.replace(/^<\?xml\s+version\s*=\s*(["'])[^\1]+\1[^?]*\?>/, "");
-               callback(new XML(r));
-             });
+    jscurl_get(context,
+               url,
+               function(r) {
+                   r = r.replace(/^<\?xml\s+version\s*=\s*(["'])[^\1]+\1[^?]*\?>/, "");
+                   callback(new XML(r));
+               });
 }
